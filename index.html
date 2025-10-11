@@ -40,6 +40,9 @@
       border-radius: 12px;
       max-width: 600px;
     }
+    .section {
+      margin-top: 1.5rem;
+    }
     .stat { margin: 0.4rem 0; }
     .highlight { color: #00ffa0; font-weight: bold; }
     .warning { color: #ff5555; font-weight: bold; }
@@ -47,10 +50,18 @@
 </head>
 <body>
   <h1>🃏 Blackjack Analyzer</h1>
-  <p>Type shorthand like <code>N6 D10 M9 P7</code> (6 decks, dealer 10, your cards 9 and 7)</p>
+  <p>Step 1: Type shorthand like <code>N6 D10 M9 P7</code> (6 decks, dealer 10, your cards 9 and 7)</p>
 
-  <input id="cmd" placeholder="Enter shorthand..." />
-  <button onclick="processInput()">Analyze</button>
+  <div>
+    <input id="setup" placeholder="Enter initial shorthand..." />
+    <button onclick="processInput()">Analyze</button>
+  </div>
+
+  <div class="section">
+    <p>Step 2: After that, add cards as you <b>Hit, Double, or Split</b> (e.g. <code>P3</code>)</p>
+    <input id="addCard" placeholder="Enter next card (e.g. P3)" />
+    <button onclick="addCard()">Add Card</button>
+  </div>
 
   <div class="output" id="output"></div>
 
@@ -114,7 +125,7 @@
       return total;
     }
 
-    // ====== BASIC STRATEGY (simplified core) ======
+    // ====== BASIC STRATEGY (simplified) ======
     function basicStrategy(playerTotal, dealerUp, isSoft) {
       if (isSoft) {
         if (playerTotal >= 19) return "Stand";
@@ -131,23 +142,13 @@
       }
     }
 
-    // ====== MAIN PROCESS ======
-    function processInput() {
-      resetState();
-      const input = document.getElementById("cmd").value;
-      parseInput(input);
-
-      // update count
-      const allCards = [dealerCard, ...playerCards].filter(Boolean);
-      for (let c of allCards) updateCount(c);
-
+    function updateDisplay() {
       const playerTotal = handTotal(playerCards);
       const isSoft = playerCards.includes('A') && playerTotal <= 21 && playerTotal - 11 < 10;
       const dealerVal = cardValue(dealerCard);
       const trueCount = calcTrueCount();
       const strategy = basicStrategy(playerTotal, dealerVal, isSoft);
 
-      // Bet suggestion
       let betAdvice = "Minimum Bet";
       if (trueCount >= 2) betAdvice = "Increase Bet (Edge!)";
       else if (trueCount <= -1) betAdvice = "Reduce Bet";
@@ -162,6 +163,27 @@
         <div class="stat">Recommended Move: <span class="highlight">${strategy}</span></div>
         <div class="stat">Bet Suggestion: <span class="${trueCount >= 2 ? 'highlight' : (trueCount <= -1 ? 'warning' : '')}">${betAdvice}</span></div>
       `;
+    }
+
+    // ====== INITIAL HAND PROCESS ======
+    function processInput() {
+      resetState();
+      const input = document.getElementById("setup").value;
+      parseInput(input);
+      const allCards = [dealerCard, ...playerCards].filter(Boolean);
+      for (let c of allCards) updateCount(c);
+      updateDisplay();
+    }
+
+    // ====== ADDITIONAL CARD INPUT ======
+    function addCard() {
+      const input = document.getElementById("addCard").value.trim().toUpperCase();
+      if (!input) return;
+      const card = input.startsWith("P") ? input.slice(1) : input;
+      playerCards.push(card);
+      updateCount(card);
+      document.getElementById("addCard").value = "";
+      updateDisplay();
     }
   </script>
 </body>
