@@ -1,190 +1,687 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Blackjack Hi-Lo & Strategy Analyzer</title>
-  <style>
-    body {
-      background: #0f0f0f;
-      color: #f1f1f1;
-      font-family: "Inter", sans-serif;
-      margin: 0;
-      padding: 2rem;
-    }
-    h1 { color: #00ffa0; margin-bottom: 0.5rem; }
-    input {
-      background: #222;
-      color: #fff;
-      border: 1px solid #555;
-      padding: 0.6rem 1rem;
-      font-size: 1rem;
-      border-radius: 8px;
-      width: 90%;
-      max-width: 500px;
-    }
-    button {
-      background: #00ffa0;
-      color: #000;
-      border: none;
-      padding: 0.6rem 1rem;
-      font-weight: bold;
-      margin-left: 0.5rem;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    .output {
-      margin-top: 1.5rem;
-      background: #1a1a1a;
-      padding: 1rem;
-      border-radius: 12px;
-      max-width: 600px;
-    }
-    .section {
-      margin-top: 1.5rem;
-    }
-    .stat { margin: 0.4rem 0; }
-    .highlight { color: #00ffa0; font-weight: bold; }
-    .warning { color: #ff5555; font-weight: bold; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Blackjack Pro — Hi-Lo Live Analyzer</title>
+<style>
+  :root{
+    --bg:#071014; --panel:#0d1a1f; --accent:#00d18a; --muted:#9aa9b0; --danger:#ff6b6b;
+    --card:#0b2a2a;
+  }
+  body{background:var(--bg); color:#ecf6f5; font-family:Inter,system-ui,Segoe UI,Arial; margin:0; padding:18px;}
+  header{display:flex;gap:12px;align-items:center}
+  h1{margin:.2rem 0;color:var(--accent)}
+  .container{display:grid;grid-template-columns:360px 1fr;gap:18px;margin-top:12px}
+  .panel{background:var(--panel);padding:14px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.6)}
+  label{display:block;color:var(--muted);font-size:12px;margin-top:8px}
+  input[type=text], input[type=number], textarea, select{width:100%;padding:8px;border-radius:8px;border:1px solid #153236;background:#071f20;color:#e8f7f2}
+  button{background:var(--accent);color:#00220f;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;margin-top:8px}
+  .smallbtn{padding:6px 8px;font-size:13px}
+  .row{display:flex;gap:8px;align-items:center}
+  .stat{margin:8px 0;padding:10px;border-radius:10px;background:linear-gradient(180deg,#062b30,#052025);font-size:14px}
+  .muted{color:var(--muted);font-size:13px}
+  .badge{display:inline-block;padding:6px 8px;border-radius:8px;background:#022523;color:#a8f6df;margin-right:6px;font-weight:600}
+  .danger{background:var(--danger);color:#2b0000}
+  .hands{display:flex;gap:12px;flex-wrap:wrap}
+  .hand{min-width:180px;padding:10px;border-radius:10px;background:#071f22}
+  .cards{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .card{background:var(--card);padding:8px 10px;border-radius:8px;min-width:30px;text-align:center;font-weight:700}
+  footer{position:fixed;left:18px;bottom:18px;display:flex;align-items:center;gap:10px}
+  .countdot{width:14px;height:14px;border-radius:50%;display:inline-block;border:2px solid #0a2f26}
+  .green{background:#17d18a;box-shadow:0 0 8px #17d18a66}
+  .red{background:#ff6b6b;box-shadow:0 0 8px #ff6b6b66}
+  .log{max-height:160px;overflow:auto;padding:8px;background:#051517;border-radius:8px;margin-top:8px;font-size:13px}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .mini{font-size:13px;padding:6px 8px}
+  .center{display:flex;align-items:center;gap:8px}
+  .settings{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .hint{font-size:13px;color:var(--muted)}
+</style>
 </head>
 <body>
-  <h1>🃏 Blackjack Analyzer</h1>
-  <p>Step 1: Type shorthand like <code>N6 D10 M9 P7</code> (6 decks, dealer 10, your cards 9 and 7)</p>
 
+<header>
   <div>
-    <input id="setup" placeholder="Enter initial shorthand..." />
-    <button onclick="processInput()">Analyze</button>
+    <h1>🃏 Blackjack Pro — Hi-Lo Live Analyzer</h1>
+    <div class="muted">Continuous count • Splits, doubles • Dealer draws & other players • Bankroll & custom bet spread</div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- LEFT: Controls -->
+  <div class="panel">
+    <label>Decks (N#) — set number of decks and start a new shoe</label>
+    <div class="row">
+      <input id="numDecks" type="number" min="1" max="8" value="6"/>
+      <button class="smallbtn" onclick="setDecks()">Set N</button>
+      <button class="smallbtn" onclick="fullReset()">Reset All</button>
+    </div>
+
+    <label>Initial Setup (type then click Analyze)</label>
+    <input id="setup" placeholder="Example: N6 D10 M9 P7  — N optional if set above" />
+    <div class="row">
+      <button onclick="processInput()" class="">Analyze / Start Hand</button>
+      <button onclick="nextRound()" class="smallbtn">Next Round (keep count)</button>
+    </div>
+    <div class="hint">Use letters: D=dealer upcard, M=your first card, P=player subsequent cards. Use J,Q,K,A or numbers 2-10.</div>
+
+    <hr style="opacity:.08;margin:10px 0">
+
+    <label>Add Player Card (Hit / Double etc.)</label>
+    <div class="row">
+      <input id="addCard" placeholder="e.g. P3  OR just 3" />
+      <button onclick="addCard()" class="smallbtn">Add</button>
+      <button onclick="undoLast()" class="smallbtn">Undo</button>
+    </div>
+    <div class="hint">Add one card at a time. For Double, after adding the card click 'Double' below to mark the hand doubled.</div>
+
+    <label>Dealer Hole & Draws (enter sequence of cards dealer gets after you stand)</label>
+    <input id="dealerDraws" placeholder="Examples: 9 (hole), 7, 5 OR 9,7,5  — commas or spaces allowed" />
+    <div class="row">
+      <button onclick="setDealerHole()" class="smallbtn">Set Hole & Draws</button>
+      <button onclick="burnCard()" class="smallbtn">Burn Card</button>
+    </div>
+    <div class="hint">Enter first as dealer hole (hidden card), then remaining draws. All those cards are counted.</div>
+
+    <hr style="opacity:.08;margin:10px 0">
+
+    <label>Other Players' Seen Cards (counts toward running count)</label>
+    <input id="otherPlayers" placeholder="e.g. 10,9,K,A  or P: 5 6 10" />
+    <div class="row">
+      <button onclick="addOtherPlayers()" class="smallbtn">Add Other Cards</button>
+    </div>
+
+    <hr style="opacity:.08;margin:10px 0">
+
+    <label>Splits / Doubles / Hand Controls</label>
+    <div class="controls">
+      <button onclick="doSplit()" class="mini">Split</button>
+      <button onclick="doDouble()" class="mini">Double</button>
+      <button onclick="finishHand()" class="mini">Finish Hand</button>
+    </div>
+    <div class="hint">Split creates Hand A & B (if your current hand is a pair). Double marks active hand as doubled and will adjust bankroll when result recorded.</div>
+
+    <hr style="opacity:.08;margin:10px 0">
+
+    <label>Bankroll & Betting</label>
+    <div class="settings">
+      <div>
+        <label>Total Bankroll ($)</label>
+        <input id="bankroll" type="number" min="0" value="1000"/>
+      </div>
+      <div>
+        <label>Minimum Bet ($)</label>
+        <input id="minBet" type="number" min="1" value="10"/>
+      </div>
+    </div>
+
+    <label>Bet Spread Mapping (simple CSV):</label>
+    <textarea id="spreadMap" rows="2" placeholder="Example: 0:1,1:2,2:4,3:8,4:12">0:1,1:2,2:4,3:8,4:12</textarea>
+    <div class="row">
+      <button onclick="applySpread()">Apply Spread</button>
+      <button onclick="placeSuggestedBet()" class="smallbtn">Place Suggested Bet</button>
+    </div>
+    <div class="muted" style="margin-top:8px">Mapping format = TC_threshold:multiplier (multiplier * minBet). The highest matching threshold ≤ true count is used.</div>
+
+    <hr style="opacity:.08;margin:10px 0">
+
+    <label>Record Result (click after round completes)</label>
+    <div class="row">
+      <button onclick="recordWin()" class="smallbtn">Record Win</button>
+      <button onclick="recordLoss()" class="smallbtn danger">Record Loss</button>
+      <button onclick="recordPush()" class="smallbtn">Push</button>
+    </div>
+    <div class="muted">Wins/Losses update bankroll automatically using placed bets for active hand(s).</div>
+
+    <hr style="opacity:.08;margin:10px 0">
+
+    <label>Controls</label>
+    <div class="row">
+      <button onclick="refreshDisplay()" class="smallbtn">Refresh Display</button>
+      <button onclick="saveSettings()" class="smallbtn">Save Settings</button>
+      <button onclick="loadSettings()" class="smallbtn">Load Settings</button>
+    </div>
+
+    <div style="margin-top:10px" class="log" id="actionLog"></div>
   </div>
 
-  <div class="section">
-    <p>Step 2: After that, add cards as you <b>Hit, Double, or Split</b> (e.g. <code>P3</code>)</p>
-    <input id="addCard" placeholder="Enter next card (e.g. P3)" />
-    <button onclick="addCard()">Add Card</button>
+  <!-- RIGHT: Output & Hands -->
+  <div class="panel">
+    <div class="row">
+      <div class="badge">Decks: <span id="displayDecks">6</span></div>
+      <div class="badge">Rounds: <span id="roundCount">0</span></div>
+      <div class="badge">Running: <span id="runningCount">0</span></div>
+      <div class="badge">True: <span id="trueCount">0.00</span></div>
+      <div class="badge">Remaining Decks: <span id="remDecks">6.00</span></div>
+    </div>
+
+    <div style="margin-top:12px" class="hands">
+      <div class="hand">
+        <div class="muted">Dealer (upcard + hole/draws)</div>
+        <div class="cards" id="dealerCards"></div>
+        <div class="muted" id="dealerStatus">Dealer hole: -  • draws: -</div>
+      </div>
+
+      <div id="handContainer" class="hand" style="min-width:260px;">
+        <div class="muted">Player Hands</div>
+        <div id="playerHands"></div>
+      </div>
+
+      <div class="hand" style="min-width:220px;">
+        <div class="muted">Bankroll & Bets</div>
+        <div class="stat">Bankroll: $<span id="displayBankroll">1000</span></div>
+        <div class="stat">Min Bet: $<span id="displayMinBet">10</span></div>
+        <div class="stat">Suggested Bet: $<span id="displaySuggested">10</span></div>
+        <div class="stat">Placed Bet(s): $<span id="displayPlaced">0</span></div>
+        <div class="stat">Wins: <span id="wins">0</span> • Losses: <span id="losses">0</span> • Pushes: <span id="pushes">0</span></div>
+      </div>
+    </div>
+
+    <hr style="opacity:.08;margin:12px 0">
+
+    <div class="muted">Seen cards (counted):</div>
+    <div id="seenList" class="log" style="margin-top:8px;"></div>
+
   </div>
 
-  <div class="output" id="output"></div>
+</div>
 
-  <script>
-    // ====== STATE ======
-    let numDecks = 6;
-    let runningCount = 0;
-    let seenCards = [];
-    let dealerCard = null;
-    let playerCards = [];
+<footer>
+  <div class="center">
+    <div id="countDot" class="countdot green"></div>
+    <div class="muted">Card counting active</div>
+  </div>
+</footer>
 
-    const hiLoValues = {
-      2: 1, 3: 1, 4: 1, 5: 1, 6: 1,
-      7: 0, 8: 0, 9: 0,
-      10: -1, J: -1, Q: -1, K: -1, A: -1
-    };
+<script>
+/* ====== State ====== */
+let numDecks = 6;
+let runningCount = 0;
+let seenCards = [];        // sequence of all seen cards (for undo)
+let burnedCards = [];
+let dealer = { up: null, hole: null, draws: [] };
+let hands = [];            // array of hand objects {cards:[], doubled:false, splitFrom:null, placedBet:0, finished:false}
+let activeHandIndex = 0;
+let roundCount = 0;
 
-    // ====== UTILS ======
-    function cardValue(card) {
-      if (['J', 'Q', 'K'].includes(card)) return 10;
-      if (card === 'A') return 11;
-      return parseInt(card);
+let bankroll = Number(localStorage.getItem('bj_bankroll')) || 1000;
+let minBet = Number(localStorage.getItem('bj_minBet')) || 10;
+let spreadMap = parseSpread(localStorage.getItem('bj_spread') || '0:1,1:2,2:4,3:8,4:12');
+
+let wins = Number(localStorage.getItem('bj_wins')) || 0;
+let losses = Number(localStorage.getItem('bj_losses')) || 0;
+let pushes = Number(localStorage.getItem('bj_pushes')) || 0;
+
+/* ====== Hi-Lo table ====== */
+const hiLoValues = { '2':1,'3':1,'4':1,'5':1,'6':1,'7':0,'8':0,'9':0,'10':-1,'J':-1,'Q':-1,'K':-1,'A':-1 };
+
+/* ====== Helpers ====== */
+function normalizeCardToken(tok){
+  if(!tok) return null;
+  tok = String(tok).trim().toUpperCase();
+  // allow e.g. "10" or "T"
+  if(tok === 'T') tok = '10';
+  if(tok === '1' && tok.length===1) return null;
+  if(tok.length>2 && tok.includes(',')) tok = tok.split(',')[0];
+  if(tok.match(/^[2-9]|10|A|J|Q|K$/)) return tok;
+  // strip non-alphanum
+  tok = tok.replace(/[^0-9AJQKTa-z]/g,'').toUpperCase();
+  if(tok === '') return null;
+  if(tok === 'J' || tok === 'Q' || tok === 'K' || tok === 'A') return tok;
+  if(tok === '11') return null;
+  // numbers:
+  let n = parseInt(tok);
+  if(n >=2 && n <=10) return String(n);
+  return tok;
+}
+function cardValue(card){
+  if(card === 'A') return 11;
+  if(['J','Q','K'].includes(card)) return 10;
+  return parseInt(card);
+}
+function handTotal(cards){
+  let total = 0, aces = 0;
+  for(let c of cards){
+    if(c==='A') aces++;
+    else total += cardValue(c);
+  }
+  // handle aces
+  for(let i=0;i<aces;i++){
+    if(total + 11 <= 21) total += 11;
+    else total += 1;
+  }
+  return total;
+}
+function isSoft(cards){
+  return cards.includes('A') && handTotal(cards) - 11 <= 10;
+}
+function parseSpread(txt){ // returns array of [threshold,mult]
+  if(!txt) return [[0,1]];
+  try{
+    return txt.split(',').map(s=>{
+      let [k,v] = s.split(':').map(x=>x.trim());
+      return [Number(k), Number(v)];
+    }).sort((a,b)=>a[0]-b[0]);
+  } catch(e){ return [[0,1]]; }
+}
+function getTrueCount(){
+  const totalCards = numDecks*52;
+  const remaining = Math.max(totalCards - seenCards.length, 1);
+  let remDecks = remaining / 52;
+  if(remDecks < 0.0625) remDecks = 0.0625; // avoid extreme division
+  document.getElementById('remDecks').innerText = remDecks.toFixed(2);
+  return (runningCount / remDecks);
+}
+function logAction(s){
+  const el = document.getElementById('actionLog');
+  el.innerHTML = new Date().toLocaleTimeString() + ' — ' + s + '<br>' + el.innerHTML;
+}
+function updateCountWithCard(card){
+  const c = normalizeCardToken(card);
+  if(!c) return;
+  seenCards.push(c);
+  if(hiLoValues.hasOwnProperty(c)) runningCount += hiLoValues[c];
+  updateDisplay();
+}
+function updateDisplay(){
+  document.getElementById('displayDecks').innerText = numDecks;
+  document.getElementById('runningCount').innerText = runningCount;
+  const tc = getTrueCount();
+  document.getElementById('trueCount').innerText = tc.toFixed(2);
+  document.getElementById('displayBankroll').innerText = bankroll.toFixed(2);
+  document.getElementById('displayMinBet').innerText = minBet;
+  document.getElementById('displayPlaced').innerText = totalPlacedBets();
+  document.getElementById('displaySuggested').innerText = suggestedBet();
+  document.getElementById('roundCount').innerText = roundCount;
+  // dealer display
+  const dealerCardsEl = document.getElementById('dealerCards'); dealerCardsEl.innerHTML = '';
+  if(dealer.up) dealerCardsEl.appendChild(createCardEl(dealer.up));
+  if(dealer.hole) dealerCardsEl.appendChild(createCardEl('🂠')); // hidden
+  for(let d of dealer.draws) dealerCardsEl.appendChild(createCardEl(d));
+  document.getElementById('dealerStatus').innerText = `Dealer up: ${dealer.up || '-'} • hole: ${dealer.hole ? 'set' : '-'} • draws: ${dealer.draws.join(', ') || '-'}`;
+  // hands
+  renderHands();
+  // seen list
+  document.getElementById('seenList').innerText = seenCards.join(' , ');
+  // count dot color
+  const dot = document.getElementById('countDot');
+  dot.className = 'countdot ' + (Math.abs(runningCount) > 0 ? 'green' : 'red');
+  // save persistent small bits
+  localStorage.setItem('bj_bankroll', bankroll);
+  localStorage.setItem('bj_minBet', minBet);
+  localStorage.setItem('bj_spread', document.getElementById('spreadMap').value);
+  localStorage.setItem('bj_wins', wins);
+  localStorage.setItem('bj_losses', losses);
+  localStorage.setItem('bj_pushes', pushes);
+  document.getElementById('wins').innerText = wins;
+  document.getElementById('losses').innerText = losses;
+  document.getElementById('pushes').innerText = pushes;
+}
+
+/* ====== UI helpers ====== */
+function createCardEl(card){
+  const div = document.createElement('div');
+  div.className = 'card';
+  div.innerText = card;
+  return div;
+}
+function renderHands(){
+  const container = document.getElementById('playerHands');
+  container.innerHTML = '';
+  hands.forEach((h,i)=>{
+    const wrapper = document.createElement('div');
+    wrapper.style.border = i===activeHandIndex ? '2px solid var(--accent)' : '1px solid #06332d';
+    wrapper.style.padding = '8px'; wrapper.style.borderRadius='8px'; wrapper.style.marginTop='8px';
+    const title = document.createElement('div'); title.className='muted';
+    title.innerText = `Hand ${i+1} ${h.splitFrom? '(split)': ''} ${h.finished? '• Finished':''}`;
+    wrapper.appendChild(title);
+    const cardsEl = document.createElement('div'); cardsEl.className='cards';
+    h.cards.forEach(c=>cardsEl.appendChild(createCardEl(c)));
+    wrapper.appendChild(cardsEl);
+    const total = document.createElement('div'); total.className='muted';
+    total.innerText = `Total: ${handTotal(h.cards)} ${isSoft(h.cards) ? ' (Soft)' : ''}`;
+    wrapper.appendChild(total);
+    const betLine = document.createElement('div'); betLine.className='muted';
+    betLine.innerHTML = `Placed Bet: $${h.placedBet.toFixed(2)} ${h.doubled? ' • DOUBLED':''}`;
+    wrapper.appendChild(betLine);
+    // action buttons
+    const btns = document.createElement('div'); btns.style.marginTop='8px';
+    const selBtn = document.createElement('button'); selBtn.className='smallbtn';
+    selBtn.innerText = 'Select';
+    selBtn.onclick = ()=>{ activeHandIndex = i; updateDisplay(); };
+    btns.appendChild(selBtn);
+    const hitBtn = document.createElement('button'); hitBtn.className='smallbtn';
+    hitBtn.innerText='Hit';
+    hitBtn.onclick = ()=>{ promptAddToHand(i); };
+    btns.appendChild(hitBtn);
+    const dblBtn = document.createElement('button'); dblBtn.className='smallbtn';
+    dblBtn.innerText='Double';
+    dblBtn.onclick = ()=>{ doDouble(i); };
+    btns.appendChild(dblBtn);
+    const finBtn = document.createElement('button'); finBtn.className='smallbtn';
+    finBtn.innerText='Finish';
+    finBtn.onclick = ()=>{ hands[i].finished = true; updateDisplay(); };
+    btns.appendChild(finBtn);
+    wrapper.appendChild(btns);
+    container.appendChild(wrapper);
+  });
+}
+
+/* ====== Actions ====== */
+
+function setDecks(){
+  const n = Number(document.getElementById('numDecks').value) || 6;
+  numDecks = n;
+  fullReset(); // new shoe
+  logAction(`Set decks to ${n} and reset shoe`);
+  updateDisplay();
+}
+
+function resetStateHands(){
+  hands = [];
+  activeHandIndex = 0;
+  // create an initial hand (empty) so user can add cards with Add Card
+  hands.push({cards:[], doubled:false, splitFrom:null, placedBet:0, finished:false});
+}
+
+function processInput(){
+  // Start new hand but keep counts? User wanted Analyze to reset hands but not counts? earlier analyze did reset counts — we will reset hands but keep seenCards and runningCount unless N is changed.
+  const txt = document.getElementById('setup').value.trim();
+  if(!txt) return;
+  // parse tokens
+  resetHandsForNewDeal();
+  const parts = txt.toUpperCase().split(/\s+/);
+  for(let p of parts){
+    if(p.startsWith('N')){ const v = Number(p.slice(1)); if(v) numDecks=v; document.getElementById('numDecks').value = numDecks; continue; }
+    if(p.startsWith('D')){ dealer.up = normalizeCardToken(p.slice(1)); updateCountWithCard(dealer.up); continue; }
+    if(p.startsWith('M')){ const c = normalizeCardToken(p.slice(1)); hands[0].cards.push(c); updateCountWithCard(c); continue; }
+    if(p.startsWith('P')){ const c = normalizeCardToken(p.slice(1)); hands[0].cards.push(c); updateCountWithCard(c); continue; }
+    // if raw token that's a card, assume player's card
+    const maybe = normalizeCardToken(p);
+    if(maybe && ['2','3','4','5','6','7','8','9','10','J','Q','K','A'].includes(maybe)){
+      hands[0].cards.push(maybe); updateCountWithCard(maybe);
     }
+  }
+  // set dealer display
+  if(!dealer.up) dealer.up = null;
+  logAction('Analyze: set up initial hand and counted visible cards');
+  updateDisplay();
+}
 
-    function parseInput(str) {
-      const parts = str.trim().toUpperCase().split(/\s+/);
-      for (let p of parts) {
-        if (p.startsWith("N")) { numDecks = parseInt(p.slice(1)) || 1; resetState(); continue; }
-        if (p.startsWith("D")) dealerCard = p.slice(1);
-        else if (p.startsWith("M") || p.startsWith("P")) playerCards.push(p.slice(1));
-      }
+function resetHandsForNewDeal(){
+  // keep seenCards and runningCount (cards remain in shoe), but clear hands/dealer
+  dealer = {up:null, hole:null, draws:[]};
+  resetHands();
+}
+
+function resetHands(){
+  hands = [];
+  hands.push({cards:[], doubled:false, splitFrom:null, placedBet:0, finished:false});
+  activeHandIndex = 0;
+}
+
+function nextRound(){
+  // start new round but KEEP runnning counts (shoe continues)
+  roundCount++;
+  resetHandsForNewDeal();
+  logAction('Next round started (counts preserved)');
+  updateDisplay();
+}
+
+function fullReset(){
+  // full reset shoe & counts & hands but keep bankroll
+  runningCount = 0; seenCards = []; burnedCards = []; dealer = {up:null,hole:null,draws:[]}; resetHands();
+  roundCount = 0; logAction('Full reset of shoe and counts');
+  updateDisplay();
+}
+
+function addCard(){
+  const raw = document.getElementById('addCard').value.trim();
+  if(!raw) return;
+  // parse like P3 or 3
+  const token = raw.toUpperCase();
+  const card = token.startsWith('P') ? normalizeCardToken(token.slice(1)) : normalizeCardToken(token);
+  if(!card) return;
+  // add to active hand
+  hands[activeHandIndex].cards.push(card);
+  updateCountWithCard(card);
+  document.getElementById('addCard').value = '';
+  logAction(`Player (hand ${activeHandIndex+1}) received ${card}`);
+  updateDisplay();
+}
+
+function promptAddToHand(index){
+  const card = prompt('Enter card to give to hand '+(index+1)+' (e.g. 3, 10, A, K)');
+  if(!card) return;
+  const c = normalizeCardToken(card);
+  if(!c) return;
+  hands[index].cards.push(c);
+  updateCountWithCard(c);
+  logAction(`Player (hand ${index+1}) received ${c}`);
+  updateDisplay();
+}
+
+function undoLast(){
+  // remove last seen card and revert its effect on runningCount
+  if(seenCards.length===0) { alert('No seen cards to undo'); return; }
+  const card = seenCards.pop();
+  if(hiLoValues.hasOwnProperty(card)) runningCount -= hiLoValues[card];
+  // also remove from hands/dealer if last occurrence matches
+  // Try to remove last occurrence in player hands (most likely)
+  let removed=false;
+  for(let i=hands.length-1;i>=0;i--){
+    const idx = hands[i].cards.lastIndexOf(card);
+    if(idx>=0){ hands[i].cards.splice(idx,1); removed=true; break; }
+  }
+  // if not removed, try dealer draws/hole/up
+  if(!removed){
+    const dIdx = dealer.draws.lastIndexOf(card);
+    if(dIdx>=0){ dealer.draws.splice(dIdx,1); removed=true; }
+    else if(dealer.hole === card){ dealer.hole = null; removed=true; }
+    else if(dealer.up === card){ dealer.up = null; removed=true; }
+    else {
+      // could be burned; remove last burned
+      const bIdx = burnedCards.lastIndexOf(card);
+      if(bIdx>=0){ burnedCards.splice(bIdx,1); removed=true; }
     }
+  }
+  logAction(`Undo last card: ${card}`);
+  updateDisplay();
+}
 
-    function resetState() {
-      runningCount = 0;
-      seenCards = [];
-      dealerCard = null;
-      playerCards = [];
-    }
+function burnCard(){
+  const raw = prompt('Enter card to burn (e.g. 10, A, 7)').trim();
+  if(!raw) return;
+  const c = normalizeCardToken(raw);
+  if(!c) return;
+  burnedCards.push(c);
+  updateCountWithCard(c);
+  logAction('Burned card: '+c);
+  updateDisplay();
+}
 
-    function updateCount(card) {
-      if (hiLoValues.hasOwnProperty(card)) runningCount += hiLoValues[card];
-      seenCards.push(card);
-    }
+function setDealerHole(){
+  const txt = document.getElementById('dealerDraws').value.trim();
+  if(!txt) return;
+  // allow comma or spaces: first token = hole, rest = draws
+  const tokens = txt.replace(/,/g,' ').split(/\s+/).filter(Boolean);
+  if(tokens.length===0) return;
+  dealer.hole = normalizeCardToken(tokens[0]);
+  updateCountWithCard(dealer.hole); // hole is counted once you see it (user told us)
+  // remaining tokens are dealer draws (in order)
+  dealer.draws = [];
+  for(let i=1;i<tokens.length;i++){
+    const c = normalizeCardToken(tokens[i]);
+    if(c){ dealer.draws.push(c); updateCountWithCard(c); }
+  }
+  logAction('Dealer hole & draws set: hole='+dealer.hole+' draws='+dealer.draws.join(','));
+  updateDisplay();
+}
 
-    function calcTrueCount() {
-      const totalCards = numDecks * 52;
-      const remainingDecks = Math.max((totalCards - seenCards.length) / 52, 1);
-      return (runningCount / remainingDecks).toFixed(2);
-    }
+function addOtherPlayers(){
+  const txt = document.getElementById('otherPlayers').value.trim();
+  if(!txt) return;
+  const tokens = txt.replace(/,/g,' ').split(/\s+/).filter(Boolean);
+  for(const t of tokens){
+    const c = normalizeCardToken(t);
+    if(c){ updateCountWithCard(c); logAction('Other player card seen: '+c); }
+  }
+  document.getElementById('otherPlayers').value = '';
+  updateDisplay();
+}
 
-    function handTotal(cards) {
-      let total = 0, aces = 0;
-      for (let c of cards) {
-        if (c === 'A') aces++;
-        else total += cardValue(c);
-      }
-      for (let i = 0; i < aces; i++) {
-        total += (total + 11 <= 21) ? 11 : 1;
-      }
-      return total;
-    }
+/* ====== Split & Double logic ====== */
 
-    // ====== BASIC STRATEGY (simplified) ======
-    function basicStrategy(playerTotal, dealerUp, isSoft) {
-      if (isSoft) {
-        if (playerTotal >= 19) return "Stand";
-        if (playerTotal === 18 && [2, 7, 8].includes(dealerUp)) return "Stand";
-        if (playerTotal === 18 && [3, 4, 5, 6].includes(dealerUp)) return "Double (if allowed) else Stand";
-        if (playerTotal <= 17 && [5,6].includes(dealerUp)) return "Double (if allowed) else Hit";
-        return "Hit";
-      } else {
-        if (playerTotal >= 17) return "Stand";
-        if (playerTotal >= 13 && dealerUp <= 6) return "Stand";
-        if (playerTotal === 12 && [4, 5, 6].includes(dealerUp)) return "Stand";
-        if (playerTotal === 11 || playerTotal === 10) return "Double (if allowed)";
-        return "Hit";
-      }
-    }
+function canSplit(hand){
+  if(!hand) return false;
+  if(hand.cards.length!==2) return false;
+  const a=hand.cards[0], b=hand.cards[1];
+  // treat 10,J,Q,K as ten-value pair
+  if(a===b) return true;
+  if((a==='10' && (b==='J'||b==='Q'||b==='K')) || (b==='10' && (a==='J'||a==='Q'||a==='K'))) return true;
+  if((a==='J'||a==='Q'||a==='K') && (b==='J'||b==='Q'||b==='K')) return true;
+  return false;
+}
 
-    function updateDisplay() {
-      const playerTotal = handTotal(playerCards);
-      const isSoft = playerCards.includes('A') && playerTotal <= 21 && playerTotal - 11 < 10;
-      const dealerVal = cardValue(dealerCard);
-      const trueCount = calcTrueCount();
-      const strategy = basicStrategy(playerTotal, dealerVal, isSoft);
+function doSplit(){
+  const hand = hands[activeHandIndex];
+  if(!canSplit(hand)){ alert('Cannot split: hand is not a pair'); return; }
+  const [c1,c2] = hand.cards;
+  // convert to two hands
+  hand.cards = [c1]; hand.splitFrom = true; // mark
+  const newHand = {cards:[c2], doubled:false, splitFrom:true, placedBet:hand.placedBet || 0, finished:false};
+  hands.splice(activeHandIndex+1,0,newHand);
+  logAction('Split hand into two hands: '+c1+' | '+c2);
+  updateDisplay();
+}
 
-      let betAdvice = "Minimum Bet";
-      if (trueCount >= 2) betAdvice = "Increase Bet (Edge!)";
-      else if (trueCount <= -1) betAdvice = "Reduce Bet";
+function doDouble(idx){
+  idx = (typeof idx === 'number') ? idx : activeHandIndex;
+  const hand = hands[idx];
+  if(!hand) return;
+  hand.doubled = true;
+  // apply extra bet now (we won't subtract until result recorded)
+  hand.placedBet = Math.max(hand.placedBet, suggestedBet());
+  hand.placedBet *= 2;
+  logAction('Hand '+(idx+1)+' doubled; bet doubled to $' + hand.placedBet.toFixed(2));
+  updateDisplay();
+}
 
-      document.getElementById("output").innerHTML = `
-        <div class="stat">Decks: <span class="highlight">${numDecks}</span></div>
-        <div class="stat">Dealer: <span class="highlight">${dealerCard || "-"}</span></div>
-        <div class="stat">Player: <span class="highlight">${playerCards.join(", ") || "-"}</span> (Total = ${playerTotal})</div>
-        <hr>
-        <div class="stat">Running Count: <span class="highlight">${runningCount}</span></div>
-        <div class="stat">True Count: <span class="highlight">${trueCount}</span></div>
-        <div class="stat">Recommended Move: <span class="highlight">${strategy}</span></div>
-        <div class="stat">Bet Suggestion: <span class="${trueCount >= 2 ? 'highlight' : (trueCount <= -1 ? 'warning' : '')}">${betAdvice}</span></div>
-      `;
-    }
+function finishHand(){
+  hands[activeHandIndex].finished = true;
+  updateDisplay();
+}
 
-    // ====== INITIAL HAND PROCESS ======
-    function processInput() {
-      resetState();
-      const input = document.getElementById("setup").value;
-      parseInput(input);
-      const allCards = [dealerCard, ...playerCards].filter(Boolean);
-      for (let c of allCards) updateCount(c);
-      updateDisplay();
-    }
+/* ====== Betting: parse spread and compute suggested ====== */
 
-    // ====== ADDITIONAL CARD INPUT ======
-    function addCard() {
-      const input = document.getElementById("addCard").value.trim().toUpperCase();
-      if (!input) return;
-      const card = input.startsWith("P") ? input.slice(1) : input;
-      playerCards.push(card);
-      updateCount(card);
-      document.getElementById("addCard").value = "";
-      updateDisplay();
-    }
-  </script>
+function applySpread(){
+  spreadMap = parseSpread(document.getElementById('spreadMap').value);
+  logAction('Applied spread mapping: ' + JSON.stringify(spreadMap));
+  updateDisplay();
+}
+
+function suggestedBet(){
+  // TC thresholds sorted ascending; choose highest threshold <= tc
+  const tc = Math.floor(getTrueCount());
+  let chosen = 1;
+  for(const [thr,mul] of spreadMap){
+    if(tc >= thr) chosen = mul;
+  }
+  const bet = Math.max(minBet, minBet * chosen);
+  return Math.max(minBet, Math.round(bet*100)/100);
+}
+
+function placeSuggestedBet(){
+  const bet = suggestedBet();
+  // place same bet on active hand (or on both split hands if two exist)
+  if(hands.length===1){
+    hands[0].placedBet = bet;
+  } else {
+    // if split, default place bet per hand = bet
+    hands.forEach(h=>{ h.placedBet = bet; });
+  }
+  logAction('Placed suggested bet(s) $' + bet + ' per hand');
+  updateDisplay();
+}
+
+function totalPlacedBets(){
+  return hands.reduce((s,h)=>s + (h.placedBet || 0), 0).toFixed(2);
+}
+
+/* ====== Record results ====== */
+
+function recordWin(){
+  // for each hand, add payout: normal 1:1, blackjack not tracked specially here
+  let payout = 0;
+  hands.forEach(h=>{
+    const bet = h.placedBet || 0;
+    if(h.doubled) payout += bet; else payout += bet;
+  });
+  bankroll += payout;
+  wins++;
+  logAction('Recorded WIN: +$' + payout.toFixed(2));
+  // clear hands for next round but keep counts
+  nextRound();
+}
+
+function recordLoss(){
+  // subtract placed bets
+  let loss = 0;
+  hands.forEach(h=>{
+    const bet = h.placedBet || 0;
+    loss += bet;
+  });
+  bankroll -= loss;
+  losses++;
+  logAction('Recorded LOSS: -$' + loss.toFixed(2));
+  nextRound();
+}
+
+function recordPush(){
+  pushes++;
+  logAction('Recorded PUSH (no bankroll change)');
+  nextRound();
+}
+
+/* ====== Settings persistence & misc ====== */
+
+function saveSettings(){
+  bankroll = Number(document.getElementById('bankroll').value) || bankroll;
+  minBet = Number(document.getElementById('minBet').value) || minBet;
+  localStorage.setItem('bj_bankroll',bankroll);
+  localStorage.setItem('bj_minBet',minBet);
+  localStorage.setItem('bj_spread',document.getElementById('spreadMap').value);
+  logAction('Settings saved');
+  updateDisplay();
+}
+
+function loadSettings(){
+  bankroll = Number(localStorage.getItem('bj_bankroll')) || bankroll;
+  minBet = Number(localStorage.getItem('bj_minBet')) || minBet;
+  document.getElementById('bankroll').value = bankroll;
+  document.getElementById('minBet').value = minBet;
+  document.getElementById('spreadMap').value = localStorage.getItem('bj_spread') || document.getElementById('spreadMap').value;
+  spreadMap = parseSpread(document.getElementById('spreadMap').value);
+  logAction('Settings loaded');
+  updateDisplay();
+}
+
+function refreshDisplay(){ updateDisplay(); logAction('Display refreshed'); }
+
+/* ====== Init ====== */
+function init(){
+  // load settings if present
+  document.getElementById('bankroll').value = bankroll;
+  document.getElementById('minBet').value = minBet;
+  document.getElementById('spreadMap').value = localStorage.getItem('bj_spread') || document.getElementById('spreadMap').value;
+  spreadMap = parseSpread(document.getElementById('spreadMap').value || '0:1,1:2,2:4,3:8,4:12');
+  resetStateHands();
+  updateDisplay();
+}
+init();
+</script>
+
 </body>
 </html>
